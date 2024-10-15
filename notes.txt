@@ -1,0 +1,39 @@
+source fastapi_jtrade1/bin/activate
+
+Using Systemd Service (Recommended)
+    sudo vim /etc/systemd/system/fastapi.service
+    SAMPLE SERVICE FILE: 
+    [Unit]
+    Description=FastAPI Application
+    After=network.target
+
+    [Service]
+    User=jwu
+    Group=www-data
+    WorkingDirectory=/home/jwu/fastapi_jtrade1/atom
+    Environment="PATH=/home/jwu/fastapi_jtrade1/fastapi_jtrade1/bin"
+    ExecStart=/home/jwu/fastapi_jtrade1/fastapi_jtrade1/bin/uvicorn main:app --host 127.0.0.1 --port 8000
+
+    [Install]
+    WantedBy=multi-user.target
+
+Start and Enable the Service
+sudo systemctl daemon-reload
+sudo systemctl start fastapi
+sudo systemctl enable fastapi
+sudo systemctl restart fastapi
+
+
+Check Service Status
+    sudo systemctl status fastapi
+
+TEST: curl -X GET https://api.nativequant.com/stock_historical/MSFT?from_date=2024-09-01&to_date=2024-09-30
+
+You can test renewal with:
+    sudo certbot renew --dry-run
+
+Check Service Status:
+    sudo systemctl status fastapi
+
+View Logs:
+    sudo journalctl -u fastapi -f
