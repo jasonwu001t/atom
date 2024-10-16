@@ -12,6 +12,9 @@ import functools
 from cachetools import TTLCache, cached
 from cachetools.keys import hashkey
 from TAI.source import Alpaca, OptionBet
+import json
+import os
+from pathlib import Path
 
 app = FastAPI()
 
@@ -182,72 +185,74 @@ def stock_historical(
 
 # AWS Chalice endpoints converted to FastAPI with 24-hour cache
 
-# Initialize boto3 client for S3
-s3_client = boto3.client('s3')
-BUCKET_NAME = 'jtrade1-dir'  # S3 bucket name for the app
-SUBSCRIPTION_KEY = 'subscriptions.json'  # Key for storing subscription data
+# Define base path for local data
+BASE_PATH = Path("/home/jwu/fastapi_jtrade1/data_downloader")
 
-# Define FRED and BLS S3 keys
-FRED_S3_KEYS = {
-    "us_30yr_fix_mortgage_rate": "api/fred/us_30yr_fix_mortgage_rate.json",
-    "consumer_price_index": "api/fred/consumer_price_index.json",
-    "federal_funds_rate": "api/fred/federal_funds_rate.json",
-    "gdp": "api/fred/gdp.json",
-    "core_cpi": "api/fred/core_cpi.json",
-    "fed_total_assets": "api/fred/fed_total_assets.json",
-    "m2": "api/fred/m2.json",
-    "sp500": "api/fred/sp500.json",
-    "commercial_banks_deposits": "api/fred/commercial_banks_deposits.json",
-    "total_money_market_fund": "api/fred/total_money_market_fund.json",
-    "us_producer_price_index": "api/fred/us_producer_price_index.json",
-    "unemployment_rate": "api/bls/unemployment_rate.json",
-    "nonfarm_payroll": "api/bls/nonfarm_payroll.json",
-    "us_avg_weekly_hours": "api/bls/us_avg_weekly_hours.json",
-    "us_job_opening": "api/bls/us_job_opening.json"
+# Update ECONOMY keys to use local file paths
+ECONOMY_KEYS = {
+    "commercial_banks_deposits": BASE_PATH / "fred/data/commercial_banks_deposits.json",
+    "consumer_price_index": BASE_PATH / "fred/data/consumer_price_index.json",
+    "core_cpi": BASE_PATH / "fred/data/core_cpi.json",
+    "federal_funds_rate": BASE_PATH / "fred/data/federal_funds_rate.json",
+    "fed_total_assets": BASE_PATH / "fred/data/fed_total_assets.json",
+    "gdp": BASE_PATH / "fred/data/gdp.json",
+    "m2": BASE_PATH / "fred/data/m2.json",
+    "sp500": BASE_PATH / "fred/data/sp500.json",
+    "total_money_market_fund": BASE_PATH / "fred/data/total_money_market_fund.json",
+    "unemployment_rate": BASE_PATH / "fred/data/unemployment_rate.json",
+    "us_30yr_fix_mortgage_rate": BASE_PATH / "fred/data/us_30yr_fix_mortgage_rate.json",
+    "us_producer_price_index": BASE_PATH / "fred/data/us_producer_price_index.json",
+
+    "bls_data": BASE_PATH / "bls/bls_data/bls_data.json",
+    "nonfarm_payroll": BASE_PATH / "bls/bls_data/nonfarm_payroll.json",
+    "unemployment_rate": BASE_PATH / "bls/bls_data/unemployment_rate.json",
+    "us_avg_weekly_hours": BASE_PATH / "bls/bls_data/us_avg_weekly_hours.json",
+    "us_job_opening": BASE_PATH / "bls/bls_data/us_job_opening.json",
 }
 
-FRED_S3_KEYS_SHORT = {
-    "us_30yr_fix_mortgage_rate": "api/fred_short/short_us_30yr_fix_mortgage_rate.json",
-    "consumer_price_index": "api/fred_short/short_consumer_price_index.json",
-    "federal_funds_rate": "api/fred_short/short_federal_funds_rate.json",
-    "gdp": "api/fred_short/short_gdp.json",
-    "core_cpi": "api/fred_short/short_core_cpi.json",
-    "fed_total_assets": "api/fred_short/short_fed_total_assets.json",
-    "m2": "api/fred_short/short_m2.json",
-    "sp500": "api/fred_short/short_sp500.json",
-    "commercial_banks_deposits": "api/fred_short/short_commercial_banks_deposits.json",
-    "total_money_market_fund": "api/fred_short/short_total_money_market_fund.json",
-    "us_producer_price_index": "api/fred_short/short_us_producer_price_index.json",
-    "unemployment_rate": "api/bls_short/unemployment_rate_short.json",
-    "nonfarm_payroll": "api/bls_short/nonfarm_payroll_short.json",
-    "us_avg_weekly_hours": "api/bls_short/us_avg_weekly_hours_short.json",
-    "us_job_opening": "api/bls_short/us_job_opening_short.json"
+ECONOMY_KEYS_SHORT = {
+    "commercial_banks_deposits": BASE_PATH / "fred/data/short_commercial_banks_deposits.json",
+    "consumer_price_index": BASE_PATH / "fred/data/short_consumer_price_index.json",
+    "core_cpi": BASE_PATH / "fred/data/short_core_cpi.json",
+    "federal_funds_rate": BASE_PATH / "fred/data/short_federal_funds_rate.json",
+    "fed_total_assets": BASE_PATH / "fred/data/short_fed_total_assets.json",
+    "gdp": BASE_PATH / "fred/data/short_gdp.json",
+    "m2": BASE_PATH / "fred/data/short_m2.json",
+    "sp500": BASE_PATH / "fred/data/short_sp500.json",
+    "total_money_market_fund": BASE_PATH / "fred/data/short_total_money_market_fund.json",
+    "unemployment_rate": BASE_PATH / "fred/data/short_unemployment_rate.json",
+    "us_30yr_fix_mortgage_rate": BASE_PATH / "fred/data/short_us_30yr_fix_mortgage_rate.json",
+    "us_producer_price_index": BASE_PATH / "fred/data/short_us_producer_price_index.json",
+    "bls_data": BASE_PATH / "bls/bls_data/bls_data_short.json",
+    "nonfarm_payroll": BASE_PATH / "bls/bls_data/nonfarm_payroll_short.json",
+    "unemployment_rate": BASE_PATH / "bls/bls_data/unemployment_rate_short.json",
+    "us_avg_weekly_hours": BASE_PATH / "bls/bls_data/us_avg_weekly_hours_short.json",
+    "us_job_opening": BASE_PATH / "bls/bls_data/us_job_opening_short.json",               
 }
 
-# Other categories (non-FRED, non-BLS) data path mapping
-GENERIC_S3_KEYS = {
-    "us_treasury_yield": "api/treasury_yield_all.json",
-    "articles": "articles.json",
-    "chart": "chart_data.json",
-    "categories": "categories.json",
-    "indicators": "indicators.json",
+# Update other categories to use local file paths
+GENERIC_KEYS = {
+    "us_treasury_yield": BASE_PATH / "us_treasury_curve/data/treasury_yield_all.json",
+    "articles": BASE_PATH / "static_data/articles.json",
+    "categories": BASE_PATH / "static_data/categories.json",
+    # "chart": BASE_PATH / "chart_data.json",
+    # "indicators": BASE_PATH / "static_data/indicators.json",
 }
 
-def fetch_json_from_s3(key: str):
-    """Fetch JSON data from S3 bucket and sanitize it."""
+def fetch_json_from_local(file_path: Path):
+    """Fetch JSON data from local file system and sanitize it."""
     try:
-        response = s3_client.get_object(Bucket=BUCKET_NAME, Key=key)
-        content = response['Body'].read().decode('utf-8')
-        data = json.loads(content)
+        with open(file_path, "r") as file:
+            data = json.load(file)
         # Sanitize data
         sanitized_data = sanitize_data(data)
         return sanitized_data
-    except ClientError as e:
-        logger.error(f"Unable to fetch {key} from S3: {str(e)}")
-        return {"error": f"Unable to fetch {key} from S3: {str(e)}"}
+    except FileNotFoundError:
+        logger.error(f"File not found: {file_path}")
+        return {"error": f"File not found: {file_path}"}
     except json.JSONDecodeError:
-        logger.error(f"Error decoding JSON in {key}")
-        return {"error": f"Error decoding JSON in {key}"}
+        logger.error(f"Error decoding JSON in {file_path}")
+        return {"error": f"Error decoding JSON in {file_path}"}
 
 def sanitize_data(obj):
     if isinstance(obj, dict):
@@ -261,6 +266,10 @@ def sanitize_data(obj):
             return obj
     else:
         return obj
+    
+s3_client = boto3.client('s3')
+BUCKET_NAME = 'jtrade1-dir'  # S3 bucket name for the app
+SUBSCRIPTION_KEY = 'subscriptions.json'  # Key for storing subscription data
 
 def upload_json_to_s3(key: str, data: dict):
     """Upload JSON data to S3 bucket."""
@@ -269,55 +278,24 @@ def upload_json_to_s3(key: str, data: dict):
     except ClientError as e:
         logger.error(f"Unable to upload {key} to S3: {str(e)}")
         return {"error": f"Unable to upload {key} to S3: {str(e)}"}
-
-def filter_yearly_data(data):
-    current_year = datetime.now().year
-    # We want the current year plus 4 previous years
-    five_years_ago = current_year - 4
-
-    yearly_data = []
-    for item in data:
-        chart_data = item['chartData']
-        yearly_points = {}
-        for point in chart_data:
-            # Extract year from date string and convert to int
-            year = int(point['date'][:4])
-            if year >= five_years_ago:
-                yearly_points[year] = point
-
-        item['chartData'] = list(yearly_points.values())
-        yearly_data.append(item)
-    return yearly_data
-
-def filter_recent_data(data):
-    three_years_ago = (datetime.now() - timedelta(days=3*365)).strftime('%Y-%m-%d')
-    recent_data = []
-    for item in data:
-        chart_data = item['chartData']
-        recent_points = [
-            point for point in chart_data if point['date'] >= three_years_ago]
-
-        item['chartData'] = recent_points
-        recent_data.append(item)
-    return recent_data
-
-def combine_data_from_s3(keys: list):
+    
+def combine_data_from_local(file_paths: list):
     combined_data = []
-    for key in keys:
-        data = fetch_json_from_s3(key)
+    for file_path in file_paths:
+        data = fetch_json_from_local(file_path)
         if "error" not in data:
             # Assuming the data is a list of dictionaries
             combined_data.extend(data)
     return combined_data
 
-# FRED specific endpoints with 24-hour cache
+# ECONOMY specific endpoints with 24-hour cache
 
 @ttl_cache(ttl=86400)
 @app.get('/economy/{indicator}', response_class=JSONResponse)
 def get_economy_data(indicator: str):
-    s3_key = FRED_S3_KEYS.get(indicator)
-    if s3_key:
-        data = fetch_json_from_s3(s3_key)
+    file_path = ECONOMY_KEYS.get(indicator)
+    if file_path:
+        data = fetch_json_from_local(file_path)
         if "error" in data:
             raise HTTPException(status_code=500, detail=data["error"])
         return data
@@ -327,13 +305,40 @@ def get_economy_data(indicator: str):
 @ttl_cache(ttl=86400)
 @app.get('/economy', response_class=JSONResponse)
 def get_combined_economy_data():
-    combined_economy_data = combine_data_from_s3(list(FRED_S3_KEYS.values()))
+    combined_economy_data = combine_data_from_local(list(ECONOMY_KEYS.values()))
     return combined_economy_data
+
+def filter_recent_data(data, months=12):
+    """
+    Filter data to include only the most recent entries (default last 12 months).
+    
+    :param data: List of dictionaries containing economy data
+    :param months: Number of months to include (default 12)
+    :return: Filtered list of dictionaries
+    """
+    current_date = datetime.now()
+    cutoff_date = current_date - timedelta(days=30 * months)
+    
+    filtered_data = []
+    for item in data:
+        if 'date' in item:
+            try:
+                item_date = datetime.strptime(item['date'], '%Y-%m-%d')
+                if item_date >= cutoff_date:
+                    filtered_data.append(item)
+            except ValueError:
+                # If date parsing fails, include the item anyway
+                filtered_data.append(item)
+        else:
+            # If there's no date field, include the item
+            filtered_data.append(item)
+    
+    return filtered_data
 
 @ttl_cache(ttl=86400)
 @app.get('/economy_short', response_class=JSONResponse)
 def get_short_economy_data(mode: str = Query('yearly', enum=['yearly', 'recent'])):
-    combined_economy_data = combine_data_from_s3(list(FRED_S3_KEYS_SHORT.values()))
+    combined_economy_data = combine_data_from_local(list(ECONOMY_KEYS_SHORT.values()))
     if mode == 'yearly':
         filtered_data = combined_economy_data  # Data is already short
     elif mode == 'recent':
@@ -345,10 +350,10 @@ def get_short_economy_data(mode: str = Query('yearly', enum=['yearly', 'recent']
 @ttl_cache(ttl=86400)
 @app.get('/economy_short/{indicator}', response_class=JSONResponse)
 def get_short_economy_indicator_data(indicator: str, mode: str = Query('yearly', enum=['yearly', 'recent'])):
-    s3_key = FRED_S3_KEYS_SHORT.get(indicator)
-    if not s3_key:
+    file_path = ECONOMY_KEYS_SHORT.get(indicator)
+    if not file_path:
         raise HTTPException(status_code=404, detail=f'Indicator {indicator} not found')
-    data = fetch_json_from_s3(s3_key)
+    data = fetch_json_from_local(file_path)
     if "error" in data:
         raise HTTPException(status_code=500, detail=data["error"])
     if mode == 'yearly':
@@ -365,7 +370,7 @@ def get_short_economy_indicator_data(indicator: str, mode: str = Query('yearly',
 @app.get('/{category}/{key}', response_class=JSONResponse)
 def get_generic_data_with_key(category: str, key: str):
     if category == 'articles':
-        articles = fetch_json_from_s3('articles.json')
+        articles = fetch_json_from_local(GENERIC_KEYS['articles'])
         if "error" in articles:
             raise HTTPException(status_code=500, detail=articles["error"])
         # Filter articles by ID
@@ -381,29 +386,17 @@ def get_generic_data_with_key(category: str, key: str):
 @ttl_cache(ttl=86400)
 @app.get('/{category}', response_class=JSONResponse)
 def get_generic_data(category: str):
-    if category == 'articles':
-        # articles = fetch_json_from_s3('articles.json')
-        # if "error" in articles:
-        #     raise HTTPException(status_code=500, detail=articles["error"])
-        # return articles
-        with open("/home/jwu/fastapi_jtrade1/data_downloader/static_data/articles.json", "r") as file:
-            articles_data1 = json.load(file)
-            articles_data = sanitize_data(articles_data1)
-        return articles_data
-    if category == 'categories':
-        with open("/home/jwu/fastapi_jtrade1/data_downloader/static_data/categories.json", "r") as file:
-            category_data1 = json.load(file)
-            category_data = sanitize_data(category_data1)
-        return category_data
-    if category == 'us_treasury_yield':
-        with open("/home/jwu/fastapi_jtrade1/data_downloader/us_treasury_curve/data/treasury_yield_all.json", "r") as file:
-            treasury_yield_data1 = json.load(file)
-            treasury_yield_data = sanitize_data(treasury_yield_data1)
-        return treasury_yield_data
+    if category in ['articles', 'categories', 'us_treasury_yield']:
+        file_path = GENERIC_KEYS.get(category)
+        if file_path:
+            with open(file_path, "r") as file:
+                data = json.load(file)
+                sanitized_data = sanitize_data(data)
+            return sanitized_data
     else:
-        s3_key = GENERIC_S3_KEYS.get(category)
-        if s3_key:
-            data = fetch_json_from_s3(s3_key)
+        file_path = GENERIC_KEYS.get(category)
+        if file_path:
+            data = fetch_json_from_local(file_path)
             if "error" in data:
                 raise HTTPException(status_code=500, detail=data["error"])
             return data
@@ -414,7 +407,7 @@ def get_generic_data(category: str):
 @app.get('/stocks/daily_ohlc/{symbol}', response_class=JSONResponse)
 def get_daily_ohlc(symbol: str, from_date: str = Query(None), to_date: str = Query(None)):
     key = f'api/stock_daily_bar/{symbol.upper()}.json'
-    data = fetch_json_from_s3(key)
+    data = fetch_json_from_local(GENERIC_KEYS[key])
     if "error" in data:
         raise HTTPException(status_code=404, detail=f'Stock data for {symbol.upper()} not found. Details: {data["error"]}')
 
@@ -471,7 +464,7 @@ def subscribe_user(subscription: dict):
         raise HTTPException(status_code=400, detail='Name and email are required.')
 
     # Fetch existing subscription data from S3
-    subscriptions = fetch_json_from_s3(SUBSCRIPTION_KEY)
+    subscriptions = fetch_json_from_local(GENERIC_KEYS['subscriptions.json'])
     if "error" in subscriptions:
         raise HTTPException(status_code=500, detail=subscriptions['error'])
 
@@ -488,9 +481,8 @@ def subscribe_user(subscription: dict):
         subscriptions = [new_subscription]
 
     # Upload updated subscription list to S3
-    upload_error = upload_json_to_s3(SUBSCRIPTION_KEY, subscriptions)
+    upload_error = upload_json_to_s3(GENERIC_KEYS['subscriptions.json'], subscriptions)
     if upload_error:
         raise HTTPException(status_code=500, detail=upload_error['error'])
 
     return {'message': 'Subscription successful.'}
-

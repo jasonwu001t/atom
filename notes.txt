@@ -37,3 +37,5 @@ Check Service Status:
 
 View Logs:
     sudo journalctl -u fastapi -f
+
+uvicorn main_uat:app --host 0.0.0.0 --port 8001
