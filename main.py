@@ -61,6 +61,19 @@ def ttl_cache(ttl=3600, maxsize=1000):
         return wrapper
     return decorator
 
+def sanitize_data(obj):
+    if isinstance(obj, dict):
+        return {k: sanitize_data(v) for k, v in obj.items()}
+    elif isinstance(obj, list):
+        return [sanitize_data(item) for item in obj]
+    elif isinstance(obj, float):
+        if math.isnan(obj) or math.isinf(obj):
+            return None  # Replace NaN or Infinity with None
+        else:
+            return obj
+    else:
+        return obj
+    
 # Existing FastAPI endpoints with 1-hour cache
 
 @ttl_cache(ttl=3600)
@@ -102,6 +115,23 @@ def option_chain(underlying_symbol: str, expiration_date: str):
         )
     except Exception as e:
         logger.error(f"Error in option_chain: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@ttl_cache(ttl=3600)
+@app.get("/latest_stock_trade/{symbol_or_symbols}")
+def latest_stock_trade(symbol_or_symbols: str):
+    try:
+        ap = Alpaca()
+        json_data1 = ap.get_latest_trade(
+            symbol_or_symbols.upper()
+        )
+        json_data = sanitize_data(json_data1)
+        return JSONResponse(
+            content=json_data,
+            status_code=200
+        )
+    except Exception as e:
+        logger.error(f"Error in latest_stock_trade: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @ttl_cache(ttl=3600)
@@ -253,19 +283,6 @@ def fetch_json_from_local(file_path: Path):
     except json.JSONDecodeError:
         logger.error(f"Error decoding JSON in {file_path}")
         return {"error": f"Error decoding JSON in {file_path}"}
-
-def sanitize_data(obj):
-    if isinstance(obj, dict):
-        return {k: sanitize_data(v) for k, v in obj.items()}
-    elif isinstance(obj, list):
-        return [sanitize_data(item) for item in obj]
-    elif isinstance(obj, float):
-        if math.isnan(obj) or math.isinf(obj):
-            return None  # Replace NaN or Infinity with None
-        else:
-            return obj
-    else:
-        return obj
     
 s3_client = boto3.client('s3')
 BUCKET_NAME = 'jtrade1-dir'  # S3 bucket name for the app
