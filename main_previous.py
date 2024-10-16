@@ -15,8 +15,6 @@ from TAI.source import Alpaca, OptionBet
 
 app = FastAPI()
 
-#uvicorn main_uat:app --host 127.0.0.1 --port 8001
-
 # Configure logging
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
@@ -382,24 +380,10 @@ def get_generic_data_with_key(category: str, key: str):
 @app.get('/{category}', response_class=JSONResponse)
 def get_generic_data(category: str):
     if category == 'articles':
-        # articles = fetch_json_from_s3('articles.json')
-        # if "error" in articles:
-        #     raise HTTPException(status_code=500, detail=articles["error"])
-        # return articles
-        with open("/home/jwu/fastapi_jtrade1/data_downloader/static_data/articles.json", "r") as file:
-            articles_data1 = json.load(file)
-            articles_data = sanitize_data(articles_data1)
-        return articles_data
-    if category == 'categories':
-        with open("/home/jwu/fastapi_jtrade1/data_downloader/static_data/categories.json", "r") as file:
-            category_data1 = json.load(file)
-            category_data = sanitize_data(category_data1)
-        return category_data
-    if category == 'us_treasury_yield':
-        with open("/home/jwu/fastapi_jtrade1/data_downloader/us_treasury_curve/data/treasury_yield_all.json", "r") as file:
-            treasury_yield_data1 = json.load(file)
-            treasury_yield_data = sanitize_data(treasury_yield_data1)
-        return treasury_yield_data
+        articles = fetch_json_from_s3('articles.json')
+        if "error" in articles:
+            raise HTTPException(status_code=500, detail=articles["error"])
+        return articles
     else:
         s3_key = GENERIC_S3_KEYS.get(category)
         if s3_key:
@@ -493,4 +477,3 @@ def subscribe_user(subscription: dict):
         raise HTTPException(status_code=500, detail=upload_error['error'])
 
     return {'message': 'Subscription successful.'}
-

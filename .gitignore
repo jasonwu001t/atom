@@ -17,6 +17,7 @@ auth.ini
 __pycache__/
 .chalice/
 .Python
+data/
 build/
 develop-eggs/
 dist/
